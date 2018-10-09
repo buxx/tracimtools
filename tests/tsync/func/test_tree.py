@@ -2,29 +2,10 @@
 import pytest
 from aioresponses import aioresponses
 
-from tracimtools.client.http import HttpClient
-from tracimtools.client.instance import Instance
-from tracimtools.tsync.tree import RemoteTree
-
-
-@pytest.fixture(scope='function')
-def instance() -> Instance:
-    return Instance(
-        'tracim.local',
-        port=80,
-        base_path='/api/v2/',
-        https=False,
-    )
-
-
-@pytest.fixture(scope='function')
-def client(instance) -> HttpClient:
-    return HttpClient(instance)
-
-
-@pytest.fixture(scope='function')
-def remote_tree(client):
-    return RemoteTree(client)
+from tests.fixtures import one_document_in_folder
+from tests.fixtures import one_document_in_two_folders
+from tests.fixtures import one_document_without_folder
+from tests.fixtures import one_workspace_list
 
 
 @pytest.mark.asyncio
@@ -33,28 +14,16 @@ async def test_remote_tree_elements__simple_case(remote_tree):
         rmock.get(
             'http://tracim.local:80/api/v2/workspaces',
             status=200,
-            payload=[
-                {
-                    "label": "Intranet",
-                    "workspace_id": 1,
-                },
-            ],
+            payload=one_workspace_list,
         )
         rmock.get(
             'http://tracim.local:80/api/v2/workspaces/1/contents',
             status=200,
-            payload=[
-                {
-                    "content_id": 6,
-                    "content_type": "html-document",
-                    "label": "Intervention Report 12",
-                    "parent_id": None,
-                }
-            ]
+            payload=one_document_without_folder,
         )
 
-        elements = [e async for e in remote_tree.elements]
-        assert ['Intranet/Intervention Report 12'] == elements
+        elements = [e.file_path async for e in remote_tree.elements]
+        assert ['Intranet/Intervention Report 12.html'] == elements
 
 
 @pytest.mark.asyncio
@@ -63,36 +32,18 @@ async def test_remote_tree_elements__file_in_folder(remote_tree):
         rmock.get(
             'http://tracim.local:80/api/v2/workspaces',
             status=200,
-            payload=[
-                {
-                    "label": "Intranet",
-                    "workspace_id": 1,
-                },
-            ],
+            payload=one_workspace_list
         )
         rmock.get(
             'http://tracim.local:80/api/v2/workspaces/1/contents',
             status=200,
-            payload=[
-                {
-                    "content_id": 1,
-                    "content_type": "folder",
-                    "label": "Interventions",
-                    "parent_id": None,
-                },
-                {
-                    "content_id": 6,
-                    "content_type": "html-document",
-                    "label": "Report 12",
-                    "parent_id": 1,
-                }
-            ]
+            payload=one_document_in_folder,
         )
 
-        elements = [e async for e in remote_tree.elements]
+        elements = [e.file_path async for e in remote_tree.elements]
         assert [
                    'Intranet/Interventions',
-                   'Intranet/Interventions/Report 12',
+                   'Intranet/Interventions/Report 12.html',
                ] == elements
 
 
@@ -102,41 +53,17 @@ async def test_remote_tree_elements__file_in_folders(remote_tree):
         rmock.get(
             'http://tracim.local:80/api/v2/workspaces',
             status=200,
-            payload=[
-                {
-                    "label": "Intranet",
-                    "workspace_id": 1,
-                },
-            ],
+            payload=one_workspace_list,
         )
         rmock.get(
             'http://tracim.local:80/api/v2/workspaces/1/contents',
             status=200,
-            payload=[
-                {
-                    "content_id": 1,
-                    "content_type": "folder",
-                    "label": "Interventions",
-                    "parent_id": None,
-                },
-                {
-                    "content_id": 2,
-                    "content_type": "folder",
-                    "label": "South",
-                    "parent_id": 1,
-                },
-                {
-                    "content_id": 6,
-                    "content_type": "html-document",
-                    "label": "Report 12",
-                    "parent_id": 2,
-                }
-            ]
+            payload=one_document_in_two_folders,
         )
 
-        elements = [e async for e in remote_tree.elements]
+        elements = [e.file_path async for e in remote_tree.elements]
         assert [
                    'Intranet/Interventions',
                    'Intranet/Interventions/South',
-                   'Intranet/Interventions/South/Report 12',
+                   'Intranet/Interventions/South/Report 12.html',
                ] == elements

@@ -1,6 +1,5 @@
 # coding: utf-8
 import aiohttp
-import typing
 
 from tracimtools.client.instance import Instance
 from tracimtools.client.session import BasicAuthSession

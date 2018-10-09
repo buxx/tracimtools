@@ -1,12 +1,12 @@
 # condig: utf-8
 import typing
+
 import aiohttp
 
 from tracimtools.client.instance import Instance
 from tracimtools.client.session import Session
-from tracimtools.model.workspace import Workspace
 from tracimtools.model.content import Content
-
+from tracimtools.model.workspace import Workspace
 
 
 class HttpClient(object):
@@ -33,4 +33,3 @@ class HttpClient(object):
                 content_list = await resp.json()
                 for content_dict in content_list:
                     yield Content(**content_dict)
- 

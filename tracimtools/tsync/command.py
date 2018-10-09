@@ -2,18 +2,17 @@
 import argparse
 import asyncio
 
+from tracimtools.client.http import HttpClient
 from tracimtools.tsync.tree import LocalTree
 from tracimtools.tsync.tree import RemoteTree
-from tracimtools.client.instance import Instance
-from tracimtools.client.http import HttpClient
 
 
 def main(
-    local_folder_path: str,
-    tracim_instance: str,
-    email: str,
-    password: str,
-    base_path: str,
+        local_folder_path: str,
+        tracim_instance: str,
+        email: str,
+        password: str,
+        base_path: str,
 ) -> None:
     local_tree = LocalTree(local_folder_path)
     for element in local_tree.elements:
@@ -31,7 +30,6 @@ def main(
     loop = asyncio.get_event_loop()
     loop.run_until_complete(remote())
     loop.close()
-
 
 
 def cli():
@@ -55,6 +53,7 @@ def cli():
         password=args.password,
         base_path=args.base_path,
     )
+
 
 if __name__ == '__main__':
     cli()

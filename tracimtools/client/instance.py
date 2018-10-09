@@ -2,15 +2,14 @@
 from tracimtools.client.urls import Urls
 
 
-
 class Instance(object):
     def __init__(
-        self, 
-        host: str,
-        port: int = 80,
-        base_path: str = '/api/v2/',
-        https: bool = True,
-        urls: Urls = None,
+            self,
+            host: str,
+            port: int = 80,
+            base_path: str = '/api/v2/',
+            https: bool = True,
+            urls: Urls = None,
     ) -> None:
         self._host = host
         self._port = port
@@ -35,4 +34,3 @@ class Instance(object):
     @property
     def urls(self) -> Urls:
         return self._urls
-
