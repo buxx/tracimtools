@@ -42,3 +42,8 @@ class IndexManager(object):
 
     def commit(self) -> None:
         self._db_session.commit()
+
+    def get_one_from_path(self, path: str) -> ContentModel:
+        return self._db_session.query(ContentModel)\
+            .filter(ContentModel.local_path == path)\
+            .one()

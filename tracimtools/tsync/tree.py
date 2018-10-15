@@ -8,6 +8,7 @@ from tracimtools.client.http import HttpClient
 from tracimtools.client.session import BasicAuthSession
 from tracimtools.model.content import Content
 from tracimtools.tsync.index.manager import IndexManager
+from tracimtools.tsync.index.model import ContentModel
 
 
 class TreeElement(object):
@@ -39,6 +40,10 @@ class TreeElement(object):
     def modified_timestamp(self) -> float:
         return self._modified_timestamp
 
+    @modified_timestamp.setter
+    def modified_timestamp(self, value: int) -> None:
+        self._modified_timestamp = value
+
 
 class LocalTree(object):
     def __init__(self, folder_absolute_path: str) -> None:
@@ -50,16 +55,39 @@ class LocalTree(object):
         return self._index
 
     @property
-    def elements(self) -> typing.Generator[str, None, None]:
+    def elements(self) -> typing.Generator[TreeElement, None, None]:
         def scantree(path: str):
             for entry in os.scandir(path):
                 if entry.is_dir(follow_symlinks=False):
                     yield entry.path
                     yield from scantree(entry.path)
-                else:
-                    yield entry.path
+                elif not self._excluded(entry.path):
+                    # TODO BS 2018-10-15: Manage bug case where not in index
+                    content_model = self._index.get_one_from_path(entry.path)
+                    tree_element = self._get_tree_element_from_model(content_model)  # nopep8
+
+                    # Local last modified timestamp must be local reallity
+                    tree_element.modified_timestamp = os.path.getmtime(
+                        tree_element.file_path,
+                    )
+
+                    yield tree_element
 
         return scantree(self._folder_path)
+
+    def _get_tree_element_from_model(
+        self,
+        content_model: ContentModel,
+    ) -> TreeElement:
+        return TreeElement(
+            content_id=content_model.remote_id,
+            file_path=content_model.local_path,
+            content_type=content_model.content_type,
+            modified_timestamp=content_model.local_modified_timestamp,
+        )
+
+    def _excluded(self, path: str) -> bool:
+        return path.endswith('.index.sqlite')
 
 
 class RemoteTree(object):

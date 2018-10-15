@@ -26,6 +26,9 @@ class Synchronizer(object):
 
     async def execute_new_from_remote(self) -> typing.List[PendingAction]:
         pending_actions = []  # type: typing.List[PendingAction]
+        # FIXME BS 2018-10-15: This list is a TreeElement list !
+        # not a list of file path. Must manage list of element and path
+        # to local access last modified and path with performance
         local_elements = [e for e in self._local_tree.elements]
 
         async for remote_element in self._remote_tree.elements:
@@ -35,9 +38,7 @@ class Synchronizer(object):
                     remote_element.file_path,
                 )
                 remote_element_dir_path = '/' + os.path.join(*remote_element_path.split('/')[0:-1])
-
-                if not os.path.exists(remote_element_dir_path):
-                    os.makedirs(remote_element_dir_path)
+                os.makedirs(remote_element_dir_path, exist_ok=True)
 
                 # TODO BS 2018-10-11: Must check if there is no conflict
                 if remote_element.content_type in ["html-document", "file"]:
@@ -48,7 +49,6 @@ class Synchronizer(object):
                         remote_element_path,
                         remote_id=remote_element.content_id,
                         remote_modified_timestamp=remote_element.modified_timestamp,
-                        # local_modified_timestamp=os.path.getmtime(remote_element_path),
                         local_modified_timestamp=remote_element.modified_timestamp,
                     )
 
