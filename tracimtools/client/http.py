@@ -1,5 +1,6 @@
 # condig: utf-8
 import typing
+from io import BytesIO
 
 import aiohttp
 
@@ -33,3 +34,6 @@ class HttpClient(object):
                 content_list = await resp.json()
                 for content_dict in content_list:
                     yield Content(**content_dict)
+
+    def get_content_bytes(self, workspace_id: int, content_id: int) -> BytesIO:
+        return BytesIO(b'')

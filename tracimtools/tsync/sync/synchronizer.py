@@ -2,16 +2,16 @@
 import os
 import typing
 
-from tracimtools.tsync.sync.pending import PendingAction
+from tracimtools.tsync.sync.pending import PendingAction, AcceptRemote
 from tracimtools.tsync.tree import LocalTree, TreeElement
 from tracimtools.tsync.tree import RemoteTree
 
 
 class Synchronizer(object):
     def __init__(
-            self,
-            local_tree: LocalTree,
-            remote_tree: RemoteTree,
+        self,
+        local_tree: LocalTree,
+        remote_tree: RemoteTree,
     ) -> None:
         self._local_tree = local_tree
         self._remote_tree = remote_tree
@@ -91,7 +91,16 @@ class Synchronizer(object):
 
         # Simple update
         if local_element_is_modified:
-            yield PendingAction()
+            yield PendingAction(
+                local_element=local_element,
+                remote_element=remote_element,
+                solutions=[
+                    AcceptRemote(
+                        client=self._remote_tree.client,
+                        index_manager=self._local_tree.index,
+                    ),
+                ]
+            )
         else:
             with open(absolute_file_path, 'w+') as file:
                 file.write('')  # FIXME BS 2018-10-16

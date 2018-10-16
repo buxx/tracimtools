@@ -21,6 +21,7 @@ one_document_without_folder = [
         "label": "Intervention Report 12",
         "modified": "2018-10-15T15:42:40.710Z",
         "parent_id": None,
+        "workspace_id": 1,
     }
 ]
 one_document_in_folder = [
@@ -30,6 +31,7 @@ one_document_in_folder = [
         "label": "Interventions",
         "modified": "2018-10-15T15:42:40.710Z",
         "parent_id": None,
+        "workspace_id": 1,
     },
     {
         "content_id": 6,
@@ -37,6 +39,7 @@ one_document_in_folder = [
         "label": "Report 12",
         "modified": "2018-10-15T15:42:40.710Z",
         "parent_id": 1,
+        "workspace_id": 1,
     }
 ]
 one_document_in_two_folders = [
@@ -46,6 +49,7 @@ one_document_in_two_folders = [
         "label": "Interventions",
         "modified": "2018-10-15T15:42:40.710Z",
         "parent_id": None,
+        "workspace_id": 1,
     },
     {
         "content_id": 2,
@@ -53,6 +57,7 @@ one_document_in_two_folders = [
         "label": "South",
         "modified": "2018-10-15T15:42:40.710Z",
         "parent_id": 1,
+        "workspace_id": 1,
     },
     {
         "content_id": 6,
@@ -60,6 +65,7 @@ one_document_in_two_folders = [
         "label": "Report 12",
         "modified": "2018-10-15T15:42:40.710Z",
         "parent_id": 2,
+        "workspace_id": 1,
     }
 ]
 

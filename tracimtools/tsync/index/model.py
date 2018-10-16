@@ -9,6 +9,7 @@ class ContentModel(BaseModel):
 
     local_path = Column(String, primary_key=True)
     remote_id = Column(Integer, primary_key=True)
+    workspace_id = Column(Integer)
     content_type = Column(String)
     remote_modified_timestamp = Column(Integer)
     local_modified_timestamp = Column(Integer)

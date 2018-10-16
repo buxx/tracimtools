@@ -15,16 +15,18 @@ from tracimtools.tsync.index.model import ContentModel
 
 class TreeElement(object):
     def __init__(
-            self,
-            content_id: int,
-            file_path: str,
-            content_type: str,
-            modified_timestamp: int,
+        self,
+        content_id: int,
+        file_path: str,
+        content_type: str,
+        modified_timestamp: int,
+        workspace_id: int,
     ) -> None:
         self._content_id = content_id
         self._file_path = file_path
         self._content_type = content_type
         self._modified_timestamp = modified_timestamp
+        self._workspace_id = workspace_id
 
     @property
     def content_id(self) -> int:
@@ -45,6 +47,10 @@ class TreeElement(object):
     @modified_timestamp.setter
     def modified_timestamp(self, value: int) -> None:
         self._modified_timestamp = value
+
+    @property
+    def workspace_id(self) -> int:
+        return self._workspace_id
 
 
 class LocalTree(object):
@@ -86,6 +92,7 @@ class LocalTree(object):
             file_path=content_model.local_path,
             content_type=content_model.content_type,
             modified_timestamp=content_model.local_modified_timestamp,
+            workspace_id=content_model.workspace_id,
         )
 
     def _excluded(self, path: str) -> bool:
@@ -116,6 +123,7 @@ class LocalTree(object):
                     file_path=relative_file_path,
                     content_type=None,
                     modified_timestamp=os.path.getmtime(file_path),
+                    workspace_id=None,
                 )
 
         def scantree(path: str):
@@ -134,6 +142,10 @@ class LocalTree(object):
 class RemoteTree(object):
     def __init__(self, client: HttpClient) -> None:
         self._client = client
+
+    @property
+    def client(self) -> HttpClient:
+        return self._client
 
     @property
     async def elements(
@@ -179,6 +191,7 @@ class RemoteTree(object):
                                                         workspace, content)),
                         content_type=content.content_type,
                         modified_timestamp=int(modified_timestamp),
+                        workspace_id=content.workspace_id,
                     )
                 # TODO BS 2018-10-11: Manage this case with correct exception
                 except ZeroDivisionError:

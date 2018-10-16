@@ -114,9 +114,25 @@ async def test_sync__from_scratch__one_file_and_conflict(
         pending_actions = [a async for a in synchronizer.run()]
         assert pending_actions
         assert 1 == len(pending_actions)
-        # TODO BS 2018-10-16: Fill and test pending action
-        # TODO BS 2018-10-16: Answer to pending action and check
-        # results (new tests)
+
+    # Before accept remote solution
+    assert os.path.isfile(
+        os.path.join(
+            empty_test_dir_path,
+            'Intranet',
+            'Intervention Report 12.html'
+        ),
+    )
+
+    contents = empty_index.session.query(ContentModel).all()
+    assert 1 == len(contents)
+    assert 6 == contents[0].remote_id
+    assert 1539610960 == contents[0].local_modified_timestamp
+    assert 1539610960 == contents[0].remote_modified_timestamp
+    assert empty_test_dir_path + '/Intranet/Intervention Report 12.html' == \
+               contents[0].local_path
+
+    # TODO BS 2018-10-16: must check file has been updated
 
 
 @pytest.mark.asyncio
