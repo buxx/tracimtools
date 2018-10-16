@@ -62,7 +62,7 @@ async def test_sync__from_scratch__one_file(
             payload=one_document_without_folder,
         )
 
-        pending_actions = await synchronizer.run()
+        pending_actions = [a async for a in synchronizer.run()]
         assert not pending_actions
         assert os.path.isfile(
             os.path.join(
@@ -98,7 +98,7 @@ async def test_sync__from_scratch__one_file_with_one_folder(
             payload=one_document_in_folder,
         )
 
-        pending_actions = await synchronizer.run()
+        pending_actions = [a async for a in synchronizer.run()]
         assert not pending_actions
         assert os.path.isfile(
             os.path.join(
@@ -135,7 +135,7 @@ async def test_sync__from_scratch__one_file_with_two_folder(
             payload=one_document_in_two_folders,
         )
 
-        pending_actions = await synchronizer.run()
+        pending_actions = [a async for a in synchronizer.run()]
         assert not pending_actions
         assert os.path.isfile(
             os.path.join(

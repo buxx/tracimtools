@@ -155,7 +155,7 @@ class RemoteTree(object):
                                                         content_cache,
                                                         workspace, content)),
                         content_type=content.content_type,
-                        modified_timestamp=modified_timestamp,
+                        modified_timestamp=int(modified_timestamp),
                     )
                 # TODO BS 2018-10-11: Manage this case with correct exception
                 except ZeroDivisionError:

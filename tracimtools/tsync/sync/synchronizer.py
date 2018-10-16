@@ -16,33 +16,46 @@ class Synchronizer(object):
         self._local_tree = local_tree
         self._remote_tree = remote_tree
 
-    async def run(self) -> typing.List[PendingAction]:
-        pending_actions = []  # type: typing.List[PendingAction]
+    async def run(self) -> typing.Generator[PendingAction, None, None]:
+        async for action in self.synchronize_from_remote():
+            yield action
 
-        from_remote_actions = await self.synchronize_from_remote()
-        pending_actions.extend(from_remote_actions)
+    async def synchronize_from_remote(
+        self,
+    ) -> typing.Generator[PendingAction, None, None]:
+        async for remote_element in self._remote_tree.elements:
+            if not self._excluded_element(remote_element):
 
-        return pending_actions
+                # Process remote element and yield eventual pending actions
+                async for pending_action in self._process_remote_element(
+                    remote_element,
+                ):
+                    yield pending_action
 
-    async def synchronize_from_remote(self) -> typing.List[PendingAction]:
-        pending_actions = []  # type: typing.List[PendingAction]
+    async def _process_remote_element(
+        self,
+        remote_element: TreeElement
+    ) -> typing.Generator[PendingAction, None, None]:
         local_elements_by_path = self._local_tree.elements_by_path
 
-        async for remote_element in self._remote_tree.elements:
+        # New from remote
+        if remote_element.file_path not in local_elements_by_path:
+            await self._sync_new_file_from_remote(remote_element)
 
-            # New from remote
-            if remote_element.file_path not in local_elements_by_path:
-                self._sync_new_file_from_remote(remote_element)
+        # Update from remote
+        else:
+            async for action in self._sync_updated_file_from_remote(
+                    remote_element,
+            ):
+                yield action
 
-            # Update from remote
-            else:
-                actions = self._sync_updated_file_from_remote(remote_element)
-                pending_actions.extend(actions)
-
+        # TODO BS 2018-10-16: We yielding, so maybe should commit at each
         self._local_tree.index.commit()
-        return pending_actions
 
-    def _sync_new_file_from_remote(self, remote_element: TreeElement):
+    def _excluded_element(self, remote_element: TreeElement) -> bool:
+        return remote_element.content_type not in ["html-document", "file"]
+
+    async def _sync_new_file_from_remote(self, remote_element: TreeElement):
         remote_element_path = os.path.join(
             self._local_tree._folder_path,
             remote_element.file_path,
@@ -51,10 +64,8 @@ class Synchronizer(object):
             *remote_element_path.split('/')[0:-1])
         os.makedirs(remote_element_dir_path, exist_ok=True)
 
-        # TODO BS 2018-10-11: Must check if there is no conflict
-        if remote_element.content_type in ["html-document", "file"]:
-            with open(remote_element_path, 'w+') as file:
-                file.write('')
+        with open(remote_element_path, 'w+') as file:
+            file.write('')  # FIXME BS 2018-10-16
 
             self._local_tree.index.add_file(
                 remote_element_path,
@@ -63,10 +74,19 @@ class Synchronizer(object):
                 local_modified_timestamp=remote_element.modified_timestamp,
             )
 
-    def _sync_updated_file_from_remote(
-            self, remote_element: TreeElement,
-    ) -> typing.List[PendingAction]:
-        remote_element_path = remote_element.file_path
-        local_element = self._local_tree.elements_by_path[remote_element_path]
+    async def _sync_updated_file_from_remote(
+        self, remote_element: TreeElement,
+    ) -> typing.Generator[PendingAction, None, None]:
+        element_file_path = remote_element.file_path
+        local_element = self._local_tree.elements_by_path[element_file_path]
+        local_element_modified_fs = os.path.getmtime(element_file_path)
+        local_element_modified_index = local_element.modified_timestamp
+        local_element_is_modified = \
+            local_element_modified_fs > local_element_modified_index
 
-        return []
+        # Simple update
+        if local_element_is_modified:
+            yield PendingAction()
+        else:
+            with open(element_file_path, 'w+') as file:
+                file.write('')  # FIXME BS 2018-10-16
