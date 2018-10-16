@@ -49,13 +49,43 @@ class LocalTree(object):
     def __init__(self, folder_absolute_path: str) -> None:
         self._folder_path = folder_absolute_path
         self._index = IndexManager(folder_absolute_path)
+        self._elements_by_path = None  # type: typing.Dict[str, TreeElement]
 
     @property
     def index(self) -> IndexManager:
         return self._index
 
     @property
-    def elements(self) -> typing.Generator[TreeElement, None, None]:
+    def elements_by_path(self) -> typing.Dict[str, TreeElement]:
+        if self._elements_by_path is not None:
+            return self._elements_by_path
+
+        # TODO BS 2018-10-16: Specialize exception
+        raise Exception('elements must by synchronized first')
+
+    @property
+    def elements(self) -> typing.Iterable[TreeElement]:
+        if self._elements_by_path is not None:
+            return self._elements_by_path.values()
+
+        # TODO BS 2018-10-16: Specialize exception
+        raise Exception('elements must by synchronized first')
+
+    def _get_tree_element_from_model(
+        self,
+        content_model: ContentModel,
+    ) -> TreeElement:
+        return TreeElement(
+            content_id=content_model.remote_id,
+            file_path=content_model.local_path,
+            content_type=content_model.content_type,
+            modified_timestamp=content_model.local_modified_timestamp,
+        )
+
+    def _excluded(self, path: str) -> bool:
+        return path.endswith('.index.sqlite')
+
+    def synchronize(self) -> None:
         def scantree(path: str):
             for entry in os.scandir(path):
                 if entry.is_dir(follow_symlinks=False):
@@ -73,21 +103,9 @@ class LocalTree(object):
 
                     yield tree_element
 
-        return scantree(self._folder_path)
-
-    def _get_tree_element_from_model(
-        self,
-        content_model: ContentModel,
-    ) -> TreeElement:
-        return TreeElement(
-            content_id=content_model.remote_id,
-            file_path=content_model.local_path,
-            content_type=content_model.content_type,
-            modified_timestamp=content_model.local_modified_timestamp,
-        )
-
-    def _excluded(self, path: str) -> bool:
-        return path.endswith('.index.sqlite')
+        self._elements_by_path = {}
+        for element in scantree(self._folder_path):
+            self._elements_by_path[element.file_path] = element
 
 
 class RemoteTree(object):

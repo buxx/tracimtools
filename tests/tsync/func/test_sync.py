@@ -27,7 +27,9 @@ def empty_test_dir_path():
 
 @pytest.fixture(scope='function')
 def local_tree(empty_test_dir_path):
-    return LocalTree(empty_test_dir_path)
+    tree = LocalTree(empty_test_dir_path)
+    tree.synchronize()
+    yield tree
 
 
 @pytest.fixture
