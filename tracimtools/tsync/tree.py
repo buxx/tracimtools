@@ -4,6 +4,8 @@ import typing
 import time
 import datetime
 
+from sqlalchemy.orm.exc import NoResultFound
+
 from tracimtools.client.http import HttpClient
 from tracimtools.client.session import BasicAuthSession
 from tracimtools.model.content import Content
@@ -52,6 +54,10 @@ class LocalTree(object):
         self._elements_by_path = None  # type: typing.Dict[str, TreeElement]
 
     @property
+    def folder_path(self) -> str:
+        return self._folder_path
+
+    @property
     def index(self) -> IndexManager:
         return self._index
 
@@ -85,23 +91,40 @@ class LocalTree(object):
     def _excluded(self, path: str) -> bool:
         return path.endswith('.index.sqlite')
 
-    def synchronize(self) -> None:
+    def build(self) -> None:
+        def create_tree_element(file_path) -> TreeElement:
+            relative_file_path = file_path[len(self._folder_path)+1:]
+
+            try:
+                content_model = self._index.get_one_from_path(
+                    relative_file_path,
+                )
+                tree_element = self._get_tree_element_from_model(
+                    content_model,
+                )
+
+                # Local last modified timestamp must be local reality
+                tree_element.modified_timestamp = os.path.getmtime(
+                    tree_element.file_path,
+                )
+                return tree_element
+
+            # TODO BS 2018-10-16: specialize exception
+            except NoResultFound:
+                return TreeElement(
+                    content_id=None,
+                    file_path=relative_file_path,
+                    content_type=None,
+                    modified_timestamp=os.path.getmtime(file_path),
+                )
+
         def scantree(path: str):
             for entry in os.scandir(path):
                 if entry.is_dir(follow_symlinks=False):
-                    yield entry.path
+                    yield create_tree_element(entry.path)
                     yield from scantree(entry.path)
                 elif not self._excluded(entry.path):
-                    # TODO BS 2018-10-15: Manage bug case where not in index
-                    content_model = self._index.get_one_from_path(entry.path)
-                    tree_element = self._get_tree_element_from_model(content_model)  # nopep8
-
-                    # Local last modified timestamp must be local reallity
-                    tree_element.modified_timestamp = os.path.getmtime(
-                        tree_element.file_path,
-                    )
-
-                    yield tree_element
+                    yield create_tree_element(entry.path)
 
         self._elements_by_path = {}
         for element in scantree(self._folder_path):

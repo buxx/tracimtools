@@ -28,7 +28,7 @@ def empty_test_dir_path():
 @pytest.fixture(scope='function')
 def local_tree(empty_test_dir_path):
     tree = LocalTree(empty_test_dir_path)
-    tree.synchronize()
+    tree.build()
     yield tree
 
 
@@ -78,6 +78,45 @@ async def test_sync__from_scratch__one_file(
         assert 1539610960 == contents[0].local_modified_timestamp
         assert 1539610960 == contents[0].remote_modified_timestamp
         assert empty_test_dir_path + '/Intranet/Intervention Report 12.html' == contents[0].local_path  # nopep8
+
+
+@pytest.mark.asyncio
+async def test_sync__from_scratch__one_file_and_conflict(
+    empty_test_dir_path: str,
+    synchronizer: Synchronizer,
+    empty_index: IndexManager,
+    local_tree: LocalTree,
+):
+    os.makedirs(os.path.join(empty_test_dir_path, 'Intranet'))
+    with open(
+        os.path.join(
+            empty_test_dir_path,
+            'Intranet',
+            'Intervention Report 12.html',
+        ),
+        'w+'
+    ) as f:
+        f.write('')
+    local_tree.build()
+
+    with aioresponses() as rmock:
+        rmock.get(
+            'http://tracim.local:80/api/v2/workspaces',
+            status=200,
+            payload=one_workspace_list,
+        )
+        rmock.get(
+            'http://tracim.local:80/api/v2/workspaces/1/contents',
+            status=200,
+            payload=one_document_without_folder,
+        )
+
+        pending_actions = [a async for a in synchronizer.run()]
+        assert pending_actions
+        assert 1 == len(pending_actions)
+        # TODO BS 2018-10-16: Fill and test pending action
+        # TODO BS 2018-10-16: Answer to pending action and check
+        # results (new tests)
 
 
 @pytest.mark.asyncio

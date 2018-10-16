@@ -78,15 +78,20 @@ class Synchronizer(object):
         self, remote_element: TreeElement,
     ) -> typing.Generator[PendingAction, None, None]:
         element_file_path = remote_element.file_path
+        absolute_file_path = os.path.join(
+            self._local_tree.folder_path,
+            element_file_path,
+        )
         local_element = self._local_tree.elements_by_path[element_file_path]
-        local_element_modified_fs = os.path.getmtime(element_file_path)
+        local_element_modified_fs = os.path.getmtime(absolute_file_path)
         local_element_modified_index = local_element.modified_timestamp
         local_element_is_modified = \
-            local_element_modified_fs > local_element_modified_index
+            local_element_modified_fs > local_element_modified_index \
+            or not local_element.content_id
 
         # Simple update
         if local_element_is_modified:
             yield PendingAction()
         else:
-            with open(element_file_path, 'w+') as file:
+            with open(absolute_file_path, 'w+') as file:
                 file.write('')  # FIXME BS 2018-10-16
