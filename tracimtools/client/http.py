@@ -24,7 +24,9 @@ class HttpClient(object):
                 for workspace_dict in await resp.json():
                     yield Workspace(**workspace_dict)
 
-    async def get_contents(self, session: Session, workspace_id: int) -> typing.Generator[Content, None, None]:
+    async def get_contents(
+        self, session: Session, workspace_id: int,
+    ) -> typing.Generator[Content, None, None]:
         # url = self._instance.urls.workspace(workspace_id).contents
         # TODO BS 2018-10-06: implement urls
         url = self._instance.base_url + 'workspaces/{}/contents'.format(workspace_id)
@@ -39,3 +41,13 @@ class HttpClient(object):
         # TODO BS 2018-10-18: fetch api for real
         # TODO BS 2018-10-18: use streams
         return b''
+
+    def set_content_bytes(
+        self,
+        workspace_id: int,
+        content_id: int,
+        content: bytes,
+    ) -> Content:
+        # TODO BS 2018-10-18: fetch api for real
+        # TODO BS 2018-10-18: use streams
+        pass

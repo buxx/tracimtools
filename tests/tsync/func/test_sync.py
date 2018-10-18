@@ -10,7 +10,7 @@ from tests.fixtures import one_workspace_list
 from tracimtools.client.utils import str_time_to_timestamp
 from tracimtools.tsync.index.manager import IndexManager
 from tracimtools.tsync.index.model import ContentModel
-from tracimtools.tsync.sync.pending import AcceptRemote
+from tracimtools.tsync.sync.pending import AcceptRemote, AcceptLocal
 from tracimtools.tsync.sync.synchronizer import Synchronizer
 from tracimtools.tsync.tree import LocalTree
 from tracimtools.tsync.tree import RemoteTree
@@ -123,7 +123,7 @@ async def test_sync__from_scratch__one_file(
 
 
 @pytest.mark.asyncio
-async def test_sync__from_scratch__one_file_update_and_conflict(
+async def test_sync__from_scratch__one_file_update_and_conflict__accept_remote(
     empty_test_dir_path: str,
     synchronizer: Synchronizer,
     empty_index: IndexManager,
@@ -174,8 +174,9 @@ async def test_sync__from_scratch__one_file_update_and_conflict(
     assert 'Intranet/Intervention Report 12.html' == contents[0].local_path
 
     solutions = pending_actions[0].get_solutions()
-    assert 1 == len(solutions)
+    assert 2 == len(solutions)
     assert isinstance(solutions[0], AcceptRemote)
+    assert isinstance(solutions[1], AcceptLocal)
 
     # Accept remote
     pending_actions[0].resolve(solutions[0])
@@ -186,6 +187,76 @@ async def test_sync__from_scratch__one_file_update_and_conflict(
     assert 6 == contents[0].remote_id
     assert remote_timestamp == contents[0].local_modified_timestamp
     assert remote_timestamp == contents[0].remote_modified_timestamp
+    assert 'Intranet/Intervention Report 12.html' == contents[0].local_path
+
+
+@pytest.mark.asyncio
+async def test_sync__from_scratch__one_file_update_and_conflict__accept_local(
+    empty_test_dir_path: str,
+    synchronizer: Synchronizer,
+    empty_index: IndexManager,
+    local_tree: LocalTree,
+    intervention_report_12__no_folder__already_present: str,
+):
+    index = empty_index
+    file_path = intervention_report_12__no_folder__already_present
+
+    # Simulate change since last sync
+    with open(file_path, 'w+') as f:
+        f.write('')
+
+    with aioresponses() as rmock:
+        rmock.get(
+            'http://tracim.local:80/api/v2/workspaces',
+            status=200,
+            payload=one_workspace_list,
+        )
+        rmock.get(
+            'http://tracim.local:80/api/v2/workspaces/1/contents',
+            status=200,
+            payload=one_document_without_folder,
+        )
+
+        pending_actions = [a async for a in synchronizer.run()]
+        assert pending_actions
+        assert 1 == len(pending_actions)
+
+    # Before accept remote solution
+    assert os.path.isfile(
+        os.path.join(
+            empty_test_dir_path,
+            'Intranet',
+            'Intervention Report 12.html'
+        ),
+    )
+
+    # timestamp of file is currently not touched
+    remote_timestamp = str_time_to_timestamp(
+        one_document_without_folder[0]["modified"],
+    )
+    local_timestamp = os.path.getmtime(file_path)
+
+    contents = empty_index.session.query(ContentModel).all()
+    assert 1 == len(contents)
+    assert 6 == contents[0].remote_id
+    assert remote_timestamp == contents[0].local_modified_timestamp
+    assert remote_timestamp == contents[0].remote_modified_timestamp
+    assert 'Intranet/Intervention Report 12.html' == contents[0].local_path
+
+    solutions = pending_actions[0].get_solutions()
+    assert 2 == len(solutions)
+    assert isinstance(solutions[0], AcceptRemote)
+    assert isinstance(solutions[1], AcceptLocal)
+
+    # Accept remote
+    pending_actions[0].resolve(solutions[1])
+
+    # File updated with remote data and timestamp
+    contents = empty_index.session.query(ContentModel).all()
+    assert 1 == len(contents)
+    assert 6 == contents[0].remote_id
+    assert local_timestamp == contents[0].local_modified_timestamp
+    assert local_timestamp == contents[0].remote_modified_timestamp
     assert 'Intranet/Intervention Report 12.html' == contents[0].local_path
 
 

@@ -2,7 +2,8 @@
 import os
 import typing
 
-from tracimtools.tsync.sync.pending import PendingAction, AcceptRemote
+from tracimtools.tsync.sync.pending import PendingAction, AcceptRemote, \
+    AcceptLocal
 from tracimtools.tsync.tree import LocalTree, TreeElement
 from tracimtools.tsync.tree import RemoteTree
 
@@ -96,6 +97,10 @@ class Synchronizer(object):
                 remote_element=remote_element,
                 solutions=[
                     AcceptRemote(
+                        client=self._remote_tree.client,
+                        local_tree=self._local_tree,
+                    ),
+                    AcceptLocal(
                         client=self._remote_tree.client,
                         local_tree=self._local_tree,
                     ),

@@ -65,13 +65,46 @@ class AcceptRemote(BaseSolution):
             remote_element.workspace_id,
             remote_element.content_id,
         )
-        with open(absolute_file_path, 'wb+') as file_:
-            file_.write(remote_file_content)
+        with open(absolute_file_path, 'wb+') as file:
+            file.write(remote_file_content)
 
         self._local_tree.index.update_file(
             local_element.file_path,
             remote_modified_timestamp=remote_element.modified_timestamp,
             local_modified_timestamp=os.path.getmtime(absolute_file_path),
+        )
+
+
+class AcceptLocal(BaseSolution):
+    description = 'Accept local file'
+    choice_letter = 'L'
+
+    def execute(
+        self,
+        local_element: TreeElement,
+        remote_element: TreeElement,
+    ) -> None:
+        absolute_file_path = os.path.join(
+            self._local_tree.folder_path,
+            local_element.file_path,
+        )
+        with open(absolute_file_path, 'rb') as file:
+            # TODO BS 2018-10-18: stream
+            locate_file_content = file.read()
+
+        self._client.set_content_bytes(
+            remote_element.workspace_id,
+            remote_element.content_id,
+            locate_file_content,
+        )
+
+        # FIXME BS 2018-10-18: remote timetsamp must be grab because different
+        # of local timestamp
+        local_timestamp = os.path.getmtime(absolute_file_path)
+        self._local_tree.index.update_file(
+            local_element.file_path,
+            remote_modified_timestamp=local_timestamp,
+            local_modified_timestamp=local_timestamp,
         )
 
 
