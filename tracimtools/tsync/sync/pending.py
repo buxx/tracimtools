@@ -4,7 +4,7 @@ import typing
 
 from tracimtools.client.http import HttpClient
 from tracimtools.tsync.index.manager import IndexManager
-from tracimtools.tsync.tree import TreeElement
+from tracimtools.tsync.tree import TreeElement, LocalTree
 
 
 class SolutionInterface(object):
@@ -28,10 +28,10 @@ class BaseSolution(SolutionInterface):
 
     def __init__(
         self,
-        index_manager: IndexManager,
+        local_tree: LocalTree,
         client: HttpClient,
     ) -> None:
-        self._index_manager = index_manager
+        self._local_tree = local_tree
         self._client = client
 
     def get_description(self) -> str:
@@ -57,19 +57,21 @@ class AcceptRemote(BaseSolution):
         local_element: TreeElement,
         remote_element: TreeElement,
     ) -> None:
-        with open(local_element.file_path, 'wb+') as file_:
-            remote_file_content = self._client.get_content_bytes(
-                remote_element.workspace_id,
-                remote_element.content_id,
-            )
+        absolute_file_path = os.path.join(
+            self._local_tree.folder_path,
+            local_element.file_path,
+        )
+        remote_file_content = self._client.get_content_bytes(
+            remote_element.workspace_id,
+            remote_element.content_id,
+        )
+        with open(absolute_file_path, 'wb+') as file_:
             file_.write(remote_file_content)
 
-        self._index_manager.update_file(
+        self._local_tree.index.update_file(
             local_element.file_path,
             remote_modified_timestamp=remote_element.modified_timestamp,
-            local_modified_timestamp=os.path.getmtime(
-                local_element.file_path,
-            )
+            local_modified_timestamp=os.path.getmtime(absolute_file_path),
         )
 
 

@@ -7,14 +7,16 @@ from aioresponses import aioresponses
 
 from tests.fixtures import one_document_without_folder, one_document_in_folder, one_document_in_two_folders
 from tests.fixtures import one_workspace_list
+from tracimtools.client.utils import str_time_to_timestamp
 from tracimtools.tsync.index.manager import IndexManager
 from tracimtools.tsync.index.model import ContentModel
+from tracimtools.tsync.sync.pending import AcceptRemote
 from tracimtools.tsync.sync.synchronizer import Synchronizer
 from tracimtools.tsync.tree import LocalTree
 from tracimtools.tsync.tree import RemoteTree
 
 
-@pytest.fixture
+@pytest.fixture(scope='function')
 def empty_test_dir_path():
     # TODO BS 2018-10-09: Make this configurable
     dir_path = '/tmp/tsync_tests/local_folder'
@@ -32,7 +34,7 @@ def local_tree(empty_test_dir_path):
     yield tree
 
 
-@pytest.fixture
+@pytest.fixture(scope='function')
 def synchronizer(
         empty_test_dir_path: str,
         remote_tree: RemoteTree,
@@ -42,6 +44,46 @@ def synchronizer(
         local_tree,
         remote_tree,
     )
+
+
+@pytest.fixture(scope='function')
+def intervention_report_12__no_folder__already_present(
+    empty_test_dir_path: str,
+    local_tree: LocalTree,
+) -> str:
+    # Create file on disk
+    absolute_file_dir_path = os.path.join(
+        empty_test_dir_path,
+        'Intranet',
+    )
+    absolute_file_path = os.path.join(
+        absolute_file_dir_path,
+        'Intervention Report 12.html',
+    )
+    relative_file_path = os.path.join(
+        'Intranet',
+        'Intervention Report 12.html',
+    )
+
+    os.makedirs(absolute_file_dir_path)
+    with open(absolute_file_path, 'w+') as f:
+        f.write('')
+
+    # Add it in index (we are simulating update conflict)
+    local_tree.index.add_file(
+        relative_path=relative_file_path,
+        local_modified_timestamp=str_time_to_timestamp(
+            one_document_without_folder[0]["modified"],
+        ),
+        remote_id=one_document_without_folder[0]["content_id"],
+        remote_modified_timestamp=str_time_to_timestamp(
+            one_document_without_folder[0]["modified"],
+        ),
+    )
+    local_tree.index.commit()
+    local_tree.build()
+
+    return absolute_file_path
 
 
 @pytest.mark.asyncio
@@ -81,23 +123,18 @@ async def test_sync__from_scratch__one_file(
 
 
 @pytest.mark.asyncio
-async def test_sync__from_scratch__one_file_and_conflict(
+async def test_sync__from_scratch__one_file_update_and_conflict(
     empty_test_dir_path: str,
     synchronizer: Synchronizer,
     empty_index: IndexManager,
-    local_tree: LocalTree,
+    intervention_report_12__no_folder__already_present: str,
 ):
-    os.makedirs(os.path.join(empty_test_dir_path, 'Intranet'))
-    with open(
-        os.path.join(
-            empty_test_dir_path,
-            'Intranet',
-            'Intervention Report 12.html',
-        ),
-        'w+'
-    ) as f:
+    index = empty_index
+    file_path = intervention_report_12__no_folder__already_present
+
+    # Simulate change since last sync
+    with open(file_path, 'w+') as f:
         f.write('')
-    local_tree.build()
 
     with aioresponses() as rmock:
         rmock.get(
@@ -124,15 +161,32 @@ async def test_sync__from_scratch__one_file_and_conflict(
         ),
     )
 
+    # timestamp of file is currently not touched
+    remote_timestamp = str_time_to_timestamp(
+        one_document_without_folder[0]["modified"],
+    )
+
     contents = empty_index.session.query(ContentModel).all()
     assert 1 == len(contents)
     assert 6 == contents[0].remote_id
-    assert 1539610960 == contents[0].local_modified_timestamp
-    assert 1539610960 == contents[0].remote_modified_timestamp
-    assert empty_test_dir_path + '/Intranet/Intervention Report 12.html' == \
-               contents[0].local_path
+    assert remote_timestamp == contents[0].local_modified_timestamp
+    assert remote_timestamp == contents[0].remote_modified_timestamp
+    assert 'Intranet/Intervention Report 12.html' == contents[0].local_path
 
-    # TODO BS 2018-10-16: must check file has been updated
+    solutions = pending_actions[0].get_solutions()
+    assert 1 == len(solutions)
+    assert isinstance(solutions[0], AcceptRemote)
+
+    # Accept remote
+    pending_actions[0].resolve(solutions[0])
+
+    # File updated with remote data and timestamp
+    contents = empty_index.session.query(ContentModel).all()
+    assert 1 == len(contents)
+    assert 6 == contents[0].remote_id
+    assert remote_timestamp == contents[0].local_modified_timestamp
+    assert remote_timestamp == contents[0].remote_modified_timestamp
+    assert 'Intranet/Intervention Report 12.html' == contents[0].local_path
 
 
 @pytest.mark.asyncio

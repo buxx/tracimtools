@@ -86,7 +86,7 @@ class Synchronizer(object):
         local_element_modified_fs = os.path.getmtime(absolute_file_path)
         local_element_modified_index = local_element.modified_timestamp
         local_element_is_modified = \
-            local_element_modified_fs > local_element_modified_index \
+            local_element_modified_fs != local_element_modified_index \
             or not local_element.content_id
 
         # Simple update
@@ -97,7 +97,7 @@ class Synchronizer(object):
                 solutions=[
                     AcceptRemote(
                         client=self._remote_tree.client,
-                        index_manager=self._local_tree.index,
+                        local_tree=self._local_tree,
                     ),
                 ]
             )

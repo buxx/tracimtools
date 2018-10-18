@@ -8,6 +8,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from tracimtools.client.http import HttpClient
 from tracimtools.client.session import BasicAuthSession
+from tracimtools.client.utils import str_time_to_timestamp
 from tracimtools.model.content import Content
 from tracimtools.tsync.index.manager import IndexManager
 from tracimtools.tsync.index.model import ContentModel
@@ -112,7 +113,7 @@ class LocalTree(object):
 
                 # Local last modified timestamp must be local reality
                 tree_element.modified_timestamp = os.path.getmtime(
-                    tree_element.file_path,
+                    file_path,
                 )
                 return tree_element
 
@@ -176,13 +177,7 @@ class RemoteTree(object):
             async for content in self._client.get_contents(session, workspace.workspace_id):
 
                 content_cache[content.content_id] = content
-                # TODO BS 2018-10-11: FASTER if modified in contents endpoint
-                modified_timestamp = time.mktime(
-                    datetime.datetime.strptime(
-                        content.modified,
-                        "%Y-%m-%dT%H:%M:%S.%fZ"
-                    ).timetuple()
-                )
+                modified_timestamp = str_time_to_timestamp(content.modified)
                 try:
                     yield TreeElement(
                         content.content_id,

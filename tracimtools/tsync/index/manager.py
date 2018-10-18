@@ -47,3 +47,20 @@ class IndexManager(object):
         return self._db_session.query(ContentModel)\
             .filter(ContentModel.local_path == path)\
             .one()
+
+    def update_file(
+        self,
+        file_path: str,
+        remote_modified_timestamp: int,
+        local_modified_timestamp: int,
+        auto_commit: bool = False,
+    ) -> ContentModel:
+        content = self.get_one_from_path(file_path)
+        content.local_modified_timestamp = local_modified_timestamp
+        content.remote_modified_timestamp = remote_modified_timestamp
+
+        self._db_session.add(content)
+        if auto_commit:
+            self._db_session.commit()
+
+        return content
