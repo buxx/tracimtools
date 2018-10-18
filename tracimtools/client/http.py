@@ -36,5 +36,6 @@ class HttpClient(object):
                     yield Content(**content_dict)
 
     def get_content_bytes(self, workspace_id: int, content_id: int) -> bytes:
-        # TODO Bs 2018-10-18: use streams
+        # TODO BS 2018-10-18: fetch api for real
+        # TODO BS 2018-10-18: use streams
         return b''
